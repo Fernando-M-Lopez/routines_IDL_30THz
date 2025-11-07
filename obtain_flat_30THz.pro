@@ -1,28 +1,24 @@
 PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 
-
-   ; ****************************************************************************************************************************************
+    ; ****************************************************************************************************************************************
     ;Este proceso obtiene una mascara de Flat para la camara 30THz utilizando el metodo de Kuhn, Lin & Loranz 1991
     ;Utiliza la rutina mk_kuhn_flat del solar soft
     ;Lee las imagenes de entrada en formato fpf (Flir Public Format) o fits del directorio dirimag.
-    ;Escibe la imagen de Flat en formato fits y jpg en directorio de salida, con nombre la fecha de las imagenes
-    ;Para aplicar la correcci√≥n de Flat hay que hacer Imagen=Imagen/Imagenflat
+    ;Escibe la imagen de Flat en formato fits y jpg en directorio de salida,
+    ;con nombre la fecha de las imagenes
+    ;Para aplicar la correcciÛn de Flat hay que hacer Imagen=Imagen/Imagenflat
 
-    ;INPUT 
-    ;Define input directory where the N flat images are located
-    ; indir = 'path of images' (eg: indir = '\home\Fernando\flatimages\')
-    ; telescope='AR30T' or 'BR30T'
-    ;
-    ;
-    ; History:
-    ; written by Fernando M. Lopez (CRAAM-Mackenzie) --- October 2019
-    ; The routine is based in the work done by Carlos Francile and Franco Manini (OAFA-UNSJ, San Juan, Argentina)
+		; History:
+		; The routine is based in the work done by Carlos Francile and Franco Manini (OAFA-UNSJ, San Juan, Argentina)
     ; ****************************************************************************************************************************************
-
-
     loadct,0
 
-   
+    ;********************************************* INPUT *********************************************************************************
+    ;Define input directory where the N flat images are located
+    ; indir = 'path of images' (eg: indir = '\home\Fernando\flatimages\')
+  	; telescope='AR30T' or 'BR30T'
+		;*****************************************************************************************************************************************
+
 		if not keyword_set(indir) then message, '*** MUST INDICATE AS INPUT KEYWORD THE PATH OF THE IMAGES, STOPPING PROCESS ***'
 		if not keyword_set(telescope) then message, '*** MUST INDICATE AS INPUT KEYWORD THE TELESCOPE, STOPPING PROCESS ***'
 		if telescope ne 'AR30T' then if telescope ne 'BR30T' then $
@@ -34,13 +30,13 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 		file_mkdir, outdir
 
     ;Define variables de trabajo
-    cantimag=100 	;nro imagenes para calcular del set total, forma un cubo de (640,480,cantimag) puede saturar memoria 
+    cantimag=100 	      ;nro imagenes para calcular del set total, forma un cubo de (640,480,cantimag) puede saturar memoria 
     radiomascara=330.   ;radio en pixeles a considerar en las imagenes de trabajo para eliminar el efecto del limbo que da problema
-    threshold= 0.1       ;nivel para la rutina mk_kuhn_flat sobre el cual considera validos los datos de imagenes
-                        ; este valor de threshold deber√≠amos obtenerlo del histograma!!! tomar que el corte sea en 4sigmas para evitar los sectores brillantes!!
-    iteraciones= 10      ;numero de iteraciones que utilizar√° la rutina mk_kuhn_flat (se probaron mas iteraciones y no mejora, sino parece empeorar
+    threshold= 0.1      ;nivel para la rutina mk_kuhn_flat sobre el cual considera validos los datos de imagenes
+                        ;este valor de threshold deberÌamos obtenerlo del histograma!!! tomar que el corte sea en 4sigmas para evitar los sectores brillantes!!
+    iteraciones= 10     ;numero de iteraciones que utilizar· la rutina mk_kuhn_flat (se probaron mas iteraciones y no mejora, sino parece empeorar
 
-    seed = 1000L         ;Numero arbitrario para la secuencia aleatoria de eleccion de imagenes del set total
+    seed = 160L        ;Numero arbitrario para la secuencia aleatoria de eleccion de imagenes del set total
 
     ;------------------------------------------------------------
     ;Define matrices y variables generales
@@ -57,7 +53,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
     HeaderFile=STRARR(200)
 
     ;------------------------------------------------------------
-    ;Crea una mascara circular con unos y ceros que se utiliza para eliminar los bordes de im√°genes
+    ;Crea una mascara circular con unos y ceros que se utiliza para eliminar los bordes de im·genes
     ;(dejar fuera el limbo)
     mascara=FLTARR(2560,1920)
 
@@ -69,32 +65,36 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 
     ;------------------------------------------------------------
     ;Busca imagenes de trabajo presentes en el directorio
-    estaimag=file_search(indir+'*.fts', COUNT=count)
-    if count ne 0 then begin
+    estaimag=file_search(indir+'*.fits', COUNT=nfits)
+    if nfits ne 0 then begin
+    	count = nfits
         tipo='fits'
-        estaimag=FINDFILE(dirimag+'*.fts', COUNT=count)
+        estaimag=file_search(indir+'*.fits', COUNT=count)
         estaimag=estaimag(SORT(estaimag))
         Idummy=FLOAT(READFITS(estaimag(0), HeaderFile, /Silent))
         dateobs= sxpar(HeaderFile, 'DATE-OBS')
-
+        aÒo = STRMID(dateobs,0,4)
+        mes = STRMID(dateobs,5,2)
+        dia = STRMID(dateobs,8,2)
         ;Define nombre del archivo Flat de salida
-        nombre=STRMID(dateobs,0,4)+STRMID(dateobs,5,2)+STRMID(dateobs,8,2)
+        nombre=telescope+'_'+aÒo+'-'+mes+'-'+dia+'_FLAT'
     endif
 
-    estaimag=file_search(indir+'*.fpf', COUNT=count)
-    if count ne 0 then begin
+    estaimag2=file_search(indir+'*.fpf', COUNT=nfpf)
+    if nfpf ne 0 then begin
+    	count = nfpf
         tipo='fpf'
         estaimag=file_search(indir+'*.fpf', COUNT=count)
         estaimag=estaimag(SORT(estaimag))
         fpf = read_fpf(estaimag(0))
-        a√±o=STRTRIM(STRING(fpf.date_year),2)
+        aÒo=STRTRIM(STRING(fpf.date_year),2)
         mes=STRTRIM(STRING(fpf.date_month),2)
         if strlen(mes)eq 1 then mes='0'+ mes
         dia=STRTRIM(STRING(fpf.date_day),2)
         if strlen(dia)eq 1 then dia='0'+ dia
 
         ;Define nombre del archivo Flat de salida
-        nombre=telescope+'_'+a√±o+'-'+mes+'-'+dia+'_FLAT'
+        nombre=telescope+'_'+aÒo+'-'+mes+'-'+dia+'_FLAT'
 
     endif
 
@@ -107,11 +107,12 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 ;PASO 1
 ;-----------------------------------------------------------------------------
     ;------------------------------------------------------------
+
     ;Genera un indice aleatorio de las imagenes del set total
     aleatorio=FIX(randomu(seed,count) * count)
 
     ;------------------------------------------------------------
-    ;Comienza iteraci√≥n
+    ;Comienza iteraciÛn
     WHILE indice lt cantimag DO BEGIN
 
        ;---------------------------------------------
@@ -132,7 +133,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 
         maximo=MAX(Idummy)
 
-        result=WHERE(Idummy lt (maximo-maximo/5.), count2, COMPLEMENT=notresult)
+        result=WHERE(Idummy lt (maximo-maximo/5.), count2, COMPLEMENT=notresult) ; originalmente era un /5.
         if count2 eq 0 then begin
             indice=indice+1
             goto, siguiente
@@ -148,7 +149,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
         Result3 = ARRAY_INDICES(Icalcu, result2)
 
        ;---------------------------------------------
-       ;interpola un circulo a la posici√≥n del limbo de Icalcu, utilizando el paquete mpfit (L-Markwardt)
+       ;interpola un circulo a la posiciÛn del limbo de Icalcu, utilizando el paquete mpfit (L-Markwardt)
         start_parms=[320.,320.,240.0,240.0,300.]
         parms = MPFITELLIPSE(FLOAT(REFORM(Result3(0,*))), FLOAT(REFORM(Result3(1,*))), start_parms,/CIRCULAR, QUIET=1);, /CIRCULAR)
         ;      P[0]   Ellipse semi axis 1
@@ -157,7 +158,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
         ;      P[3]   Ellipse center - y value
         ;      P[4]   Ellipse rotation angle (radians) if TILT keyword set
        ;---------------------------------------------
-       ;si el valor del centro del disco solar obtenido esta dentro de ciertos l√≠mites, lo considera valido
+       ;si el valor del centro del disco solar obtenido esta dentro de ciertos lÌmites, lo considera valido
         if parms(2) gt 100 and parms(2) lt 539 and parms(3) gt 100 and parms(3) lt 379 then begin
             ;---------------------------------------------
             ;se guarda en desplazamiento del centro de la imagen considerada
@@ -224,7 +225,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 
 
     ;------------------------------------------------------------
-    ;Comienza iteraci√≥n
+    ;Comienza iteraciÛn
     WHILE indice lt cantimag DO BEGIN
 
        ;---------------------------------------------
@@ -260,7 +261,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
         Result3 = ARRAY_INDICES(Icalcu, result2)
 
        ;---------------------------------------------
-       ;interpola un circulo a la posici√≥n del limbo de Icalcu, utilizando el paquete mpfit (L-Markwardt)
+       ;interpola un circulo a la posiciÛn del limbo de Icalcu, utilizando el paquete mpfit (L-Markwardt)
         start_parms=[320.,320.,240.0,240.0,300.]
         parms = MPFITELLIPSE(FLOAT(REFORM(Result3(0,*))), FLOAT(REFORM(Result3(1,*))), start_parms,/CIRCULAR, QUIET=1);, /CIRCULAR)
         ;      P[0]   Ellipse semi axis 1
@@ -269,7 +270,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
         ;      P[3]   Ellipse center - y value
         ;      P[4]   Ellipse rotation angle (radians) if TILT keyword set
        ;---------------------------------------------
-       ;si el valor del centro del disco solar obtenido esta dentro de ciertos l√≠mites, lo considera valido
+       ;si el valor del centro del disco solar obtenido esta dentro de ciertos lÌmites, lo considera valido
         if parms(2) gt 100 and parms(2) lt 539 and parms(3) gt 100 and parms(3) lt 379 then begin
 
             ;---------------------------------------------
@@ -314,12 +315,12 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
     if Cuenta ne 0 then Iflat(ceros)=1.0
 
 
-    ;Finalizado el Paso 2, el Flat final ser√° el producto de ambos
+    ;Finalizado el Paso 2, el Flat final ser· el producto de ambos
     Iflat=Iflat*Iflat2
     ;-------------------------------------------------------
     ;Graba la imagen de flat
     filename = nombre+'.fits'
-		dateobs=a√±o+'-'+mes+'-'+dia
+		dateobs=aÒo+'-'+mes+'-'+dia
 ; ##########################################################################################################################
     MKHDR, headerfile, Iflat
 		; add few keywords to the header
@@ -346,7 +347,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 				sxaddpar, headerfile, 'EXPTYPE', 'FLAT', before='COMMENT'
 				sxaddpar, headerfile, 'WAVELNTH', 10 , ' in micrometers',before='COMMENT'
 				sxaddpar, headerfile, 'OBSERVAT', 'CRAAM', before='COMMENT'
-				sxaddpar, headerfile, 'PLACE', 'S√£o Paulo - BRAZIL', before='COMMENT'
+				sxaddpar, headerfile, 'PLACE', 'S„o Paulo - BRAZIL', before='COMMENT'
 				sxaddpar, headerfile, 'LONGITUD', '-46 39.1', before='COMMENT'
 				sxaddpar, headerfile, 'LATITUDE', '-23 32.8', before='COMMENT'
 		endif
@@ -356,7 +357,7 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 
     ;-------------------------------------------------------
     ;Muestra la imagen de flat y la graba en formato jpg
-    tvscl, Iflat*Iflat2
+    tvscl, Iflat;*Iflat2
     TVLCT, R, G, B, /GET
     Imagejpg = TVRD(  TRUE=1)
     WRITE_JPEG , outdir+nombre+'.jpg', Imagejpg, QUALITY=100, TRUE=1
@@ -364,4 +365,5 @@ PRO  obtain_flat_30THz, indir=indir, telescope=telescope
 
 final:
 print, 'Termino el proceso, grabo flat '+nombre
+stop
 END
